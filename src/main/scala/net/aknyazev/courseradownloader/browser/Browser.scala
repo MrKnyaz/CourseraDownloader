@@ -78,7 +78,12 @@ class Browser(email: String, password: String) {
   private def downloadFile(url: String, folder: String) {
     val conn = connectUntilOK(getConnection(url))
     val contentSize = conn.getContentLength
-    val videoName = conn.getHeaderField("Content-Disposition").split("=")(1).replace("\"", "")
+    println(conn.getHeaderFields)
+    val videoName = if (conn.getHeaderField("Content-Disposition")!=null) {
+      conn.getHeaderField("Content-Disposition").split("=")(1).replace("\"", "")
+    } else {
+      url.substring(url.lastIndexOf("/")+1)
+    }
     println("Downloading file: " + videoName + "  with size: " + contentSize)
     val fileInput = conn.getInputStream
     val fileOutput = new FileOutputStream(new File(folder + File.separator + videoName))
@@ -123,9 +128,9 @@ class Browser(email: String, password: String) {
       downloadFile(url._1, courseDir.getAbsolutePath)
     }
     //download pdfs
-    /*for (url <- downloadLinks._3.zipWithIndex if url._2 >= begin && url._2 <= end && pdfs) {
+    for (url <- downloadLinks._3.zipWithIndex if url._2 >= begin && url._2 <= end && pdfs) {
       downloadFile(url._1, courseDir.getAbsolutePath)
-    } */
+    }
     println(s"Finished downloading course $course")
     println("*************************************")
   }
