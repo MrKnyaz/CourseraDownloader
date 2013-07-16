@@ -77,7 +77,6 @@ class Browser(email: String, password: String) {
   private def downloadFile(url: String, folder: String) {
     val conn = connectUntilOK(getConnection(url))
     val contentSize = conn.getContentLength
-    println(conn.getHeaderFields)
     val videoName = if (conn.getHeaderField("Content-Disposition")!=null) {
       conn.getHeaderField("Content-Disposition").split("=")(1).replace("\"", "")
     } else {
