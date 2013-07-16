@@ -1,7 +1,6 @@
 package net.aknyazev.courseradownloader.browser
 
-import scala.collection.mutable._
-import java.net.{HttpURLConnection, URL, URLConnection, HttpCookie}
+import java.net.{HttpURLConnection, URL, HttpCookie}
 import java.io._
 import scala.io.Source
 
@@ -12,35 +11,35 @@ import scala.io.Source
 //Coursera browser class
 class Browser(email: String, password: String) {
   private val cookieStorage = new CookieStorage
-  login();
+  login()
 
   private def login() {
     println("Login start")
     cookieStorage.saveCookie("www.coursera.org", new HttpCookie("csrftoken", "L2IrwcaoQDa3UHbt1Qpp"))
-    val conn = getConnection("https://www.coursera.org/maestro/api/user/login");
-    setCommonRequestProperties(conn);
+    val conn = getConnection("https://www.coursera.org/maestro/api/user/login")
+    setCommonRequestProperties(conn)
     conn.setRequestProperty("Referer", "https://www.coursera.org/account/signin")
     conn.addRequestProperty("Content-Type", "application/x-www-form-urlencoded")
     conn.addRequestProperty("X-CSRFToken", "L2IrwcaoQDa3UHbt1Qpp")
-    cookieStorage.setCookies(conn);
+    cookieStorage.setCookies(conn)
     conn.setRequestMethod("POST")
     val form_data = s"email_address=$email&password=$password"
     conn.addRequestProperty("Content-Length", Integer.toString(form_data.length))
     conn.setDoOutput(true)
     val out: OutputStreamWriter = new OutputStreamWriter(conn.getOutputStream)
     out.write(form_data)
-    out.flush
-    out.close
+    out.flush()
+    out close()
     cookieStorage.saveCookies(conn)
     println("Login done")
   }
 
   private def getConnection(url: String) = {
-    new URL(url).openConnection().asInstanceOf[HttpURLConnection];
+    new URL(url).openConnection().asInstanceOf[HttpURLConnection]
   }
 
   private def setCommonRequestProperties(conn: HttpURLConnection) {
-    conn.addRequestProperty("Accept-Language", "en-US,en;q=0.8")
+    conn.addRequestProperty("Accept-Language", "en-US,enq=0.8")
     conn.addRequestProperty("User-Agent", "Mozilla")
     if (conn.getRequestProperty("Referer") == null) conn.addRequestProperty("Referer", "https://www.coursera.org")
   }
@@ -56,7 +55,7 @@ class Browser(email: String, password: String) {
       nextConn.addRequestProperty("Referer", conn.getURL.toString)
       return connectUntilOK(nextConn)
     }
-    return conn
+    conn
   }
 
   //Parse page content and get urls to videos and subtitles
@@ -72,7 +71,7 @@ class Browser(email: String, password: String) {
     val srts = for (srtPattern(anchor, url) <- srtPattern.findAllMatchIn(content)) yield url
     val pdfs = for (pdfPattern(anchor, url) <- pdfPattern.findAllMatchIn(content)) yield url
 
-    return (videos, srts, pdfs);
+    (videos, srts, pdfs)
   }
 
   private def downloadFile(url: String, folder: String) {
@@ -87,22 +86,22 @@ class Browser(email: String, password: String) {
     println("Downloading file: " + videoName + "  with size: " + contentSize)
     val fileInput = conn.getInputStream
     val fileOutput = new FileOutputStream(new File(folder + File.separator + videoName))
-    var downloadedLength = 0;
-    val partSize = contentSize / 10;
-    var progressCounter = 1;
+    var downloadedLength = 0
+    val partSize = contentSize / 10
+    var progressCounter = 1
     val buffer = new Array[Byte](2048)
     var length: Int = fileInput.read(buffer)
     while (length != -1) {
       downloadedLength += length
       if (downloadedLength / progressCounter >= partSize) {
         print(progressCounter*10 + "% ")
-        progressCounter += 1;
+        progressCounter += 1
       }
       fileOutput.write(buffer, 0, length)
       length = fileInput.read(buffer)
 
     }
-    fileOutput.flush
+    fileOutput.flush()
     fileOutput.close()
     println("done...")
   }
