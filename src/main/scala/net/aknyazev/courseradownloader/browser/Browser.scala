@@ -84,7 +84,8 @@ class Browser(email: String, password: String) {
     }
     println("Downloading file: " + videoName + "  with size: " + contentSize)
     val fileInput = conn.getInputStream
-    val fileOutput = new FileOutputStream(new File(folder + File.separator + videoName))
+    val fileOutput = new FileOutputStream(new File(folder + File.separator +
+                      videoName.replaceAll(File.separator, ";")))
     var downloadedLength = 0
     val partSize = contentSize / 10
     var progressCounter = 1
