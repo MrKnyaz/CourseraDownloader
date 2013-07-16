@@ -15,6 +15,7 @@ class Browser(email: String, password: String) {
   login();
 
   private def login() {
+    println("Login start")
     cookieStorage.saveCookie("www.coursera.org", new HttpCookie("csrftoken", "L2IrwcaoQDa3UHbt1Qpp"))
     val conn = getConnection("https://www.coursera.org/maestro/api/user/login");
     setCommonRequestProperties(conn);
@@ -31,6 +32,7 @@ class Browser(email: String, password: String) {
     out.flush
     out.close
     cookieStorage.saveCookies(conn)
+    println("Login done")
   }
 
   private def getConnection(url: String) = {
@@ -73,46 +75,59 @@ class Browser(email: String, password: String) {
     return (videos, srts, pdfs);
   }
 
-  //public methods
+  private def downloadFile(url: String, folder: String) {
+    val conn = connectUntilOK(getConnection(url))
+    val contentSize = conn.getContentLength
+    val videoName = conn.getHeaderField("Content-Disposition").split("=")(1).replace("\"", "")
+    println("Downloading file: " + videoName + "  with size: " + contentSize)
+    val fileInput = conn.getInputStream
+    val fileOutput = new FileOutputStream(new File(folder + File.separator + videoName))
+    var downloadedLength = 0;
+    val partSize = contentSize / 10;
+    var progressCounter = 1;
+    val buffer = new Array[Byte](2048)
+    var length: Int = fileInput.read(buffer)
+    while (length != -1) {
+      downloadedLength += length
+      if (downloadedLength / progressCounter >= partSize) {
+        print(progressCounter*10 + "% ")
+        progressCounter += 1;
+      }
+      fileOutput.write(buffer, 0, length)
+      length = fileInput.read(buffer)
+
+    }
+    fileOutput.flush
+    fileOutput.close()
+    println("done...")
+  }
 
   //actual download, automatically creates folder with course name and downloads all videos
-  def downloadVideos(course: String, begin: Int = 0, end: Int = 10000, videos: Boolean, subtitles: Boolean, pdfs: Boolean) {
+  def downloadVideos(course: String, begin: Int = 0, end: Int = 10000, videos: Boolean = true
+                     , subtitles: Boolean = true, pdfs: Boolean = true) {
+    println(s"Started course $course")
     connectUntilOK(getConnection(s"https://class.coursera.org/$course/auth/auth_redirector?type=login&subtype=normal")).disconnect()
     val conn = connectUntilOK(getConnection(s"https://class.coursera.org/$course/lecture/index"))
+    println("Parsing page with lectures...")
     //get download links for mp4, srt and pdf
     val downloadLinks = parseHtml(conn)
-    //creating directory if not exists
+    //create directory if not exists
     val courseDir: File = new File(course)
     if (!courseDir.exists()) courseDir.mkdir()
-    //downloading videos
-    if (videos) {
-      for (url <- downloadLinks._1.zipWithIndex if url._2 >= begin && url._2 <= end) {
-        val conn = connectUntilOK(getConnection(url._1))
-        val contentSize = conn.getHeaderField("Content-Length").toLong
-        val videoName = conn.getHeaderField("Content-Disposition").split("=")(1).replace("\"", "")
-        println("Downloading video: " + videoName + "  with size: " + contentSize)
-        val fileInput = conn.getInputStream
-        val fileOutput = new FileOutputStream(new File(courseDir.getAbsolutePath+File.separator+videoName))
-        var downloadedLength = 0;
-        var partsForProgress = 20;
-        val buffer = new Array[Byte](8192)
-        var length: Int = fileInput.read(buffer)
-        while (length != -1) {
-          downloadedLength += length
-          if (contentSize / downloadedLength < partsForProgress) {
-            print(5*(20-partsForProgress+1)+"% ")
-            partsForProgress -= 1
-          }
-          fileOutput.write(buffer, 0, length)
-          length = fileInput.read(buffer)
-
-        }
-        fileOutput.flush
-        fileOutput.close()
-        println("done...")
-      }
+    //download subtitles
+    for (url <- downloadLinks._2.zipWithIndex if url._2 >= begin && url._2 <= end && subtitles) {
+      downloadFile(url._1, courseDir.getAbsolutePath)
     }
-
+    //download videos
+    for (url <- downloadLinks._1.zipWithIndex if url._2 >= begin && url._2 <= end && videos) {
+      downloadFile(url._1, courseDir.getAbsolutePath)
+    }
+    //download pdfs
+    /*for (url <- downloadLinks._3.zipWithIndex if url._2 >= begin && url._2 <= end && pdfs) {
+      downloadFile(url._1, courseDir.getAbsolutePath)
+    } */
+    println(s"Finished downloading course $course")
+    println("*************************************")
   }
 }
 
